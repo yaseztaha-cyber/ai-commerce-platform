@@ -1,0 +1,741 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Platform / tenancy ----------
+
+model Tenant {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  logoUrl     String?
+  description String?
+  industry    String   @default("CLOTHING")
+  currency    String   @default("EGP")
+  language    String   @default("ar")
+  timezone    String   @default("Africa/Cairo")
+  contactPhone String?
+  contactEmail String?
+  address     String?
+  workingHours Json?
+  // Policies & commerce config (structured, LLM never invents these)
+  returnPolicy   String?
+  exchangePolicy String?
+  cancelPolicy   String?
+  shippingPolicy String?
+  paymentMethods String[] @default(["CASH_ON_DELIVERY"])
+  codEnabled     Boolean  @default(true)
+  minimumOrderAmount Int?
+  maximumQuantity    Int?
+  freeDeliveryThreshold Int?
+  taxRate Float?
+  // AI config
+  aiPersonality String  @default("friendly")
+  aiTone        String  @default("friendly")
+  aiLanguage    String  @default("ar-EG")
+  aiGreeting    String?
+  aiInstructions String?
+  emojiUsage    String  @default("light")
+  forbiddenPhrases String[] @default([])
+  escalationKeywords String[] @default([])
+  autoEscalateOnFailure Boolean @default(true)
+  notificationConfig Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Atomic per-tenant order numbering (incremented inside the draft tx).
+  orderSeq Int @default(1000)
+  // COD fake-order protection: confirm requires a verified phone code.
+  requirePhoneVerify Boolean @default(true)
+  // Abandoned-cart nudge after this many stale hours. Null = disabled.
+  cartNudgeHours Int? @default(2)
+  subscription Subscription?
+  usageCounters UsageCounter[]
+  teamInvites TeamInvite[]
+  phoneVerifications PhoneVerification[]
+  measurements ProductMeasurement[]
+
+  memberships Membership[]
+  customers Customer[]
+  customerAddresses CustomerAddress[]
+  categories Category[]
+  products Product[]
+  productVariants ProductVariant[]
+  inventories Inventory[]
+  inventoryMovements InventoryMovement[]
+  conversations Conversation[]
+  messages Message[]
+  orders Order[]
+  orderStatusHistory OrderStatusHistory[]
+  documents Document[]
+  documentChunks DocumentChunk[]
+  aiRuns AiRun[]
+  toolCalls ToolCall[]
+  integrations Integration[]
+  webhookEvents WebhookEvent[]
+  notifications Notification[]
+  auditLogs AuditLog[]
+  promotions Promotion[]
+  deliveryZones DeliveryZone[]
+  promptVersions PromptVersion[]
+
+  @@index([slug])
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  name             String?
+  avatarUrl        String?
+  isPlatformAdmin  Boolean   @default(false)
+  emailVerifiedAt  DateTime?
+  resetTokenHash   String?   @unique
+  resetExpiresAt   DateTime?
+  resetAttempts    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  memberships      Membership[]
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  role      String   @default("OWNER") // OWNER|ADMIN|MANAGER|AGENT|VIEWER
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+// ---------- Team invites (email + role + single-use token, 7-day expiry) ----------
+
+model TeamInvite {
+  id          String    @id @default(cuid())
+  tenantId    String
+  email       String
+  role        String    // ADMIN|MANAGER|AGENT|VIEWER|OWNER (OWNER only by owners, see service)
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, email])
+}
+
+// ---------- Catalog ----------
+
+model Category {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  nameAr    String?
+  slug      String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  categoryId  String?
+  name        String
+  nameAr      String?
+  description String?
+  descriptionAr String?
+  brand       String?
+  basePrice   Int      // major currency units (EGP)
+  currency    String   @default("EGP")
+  aliases     String[] @default([])
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants ProductVariant[]
+  images   ProductImage[]
+  chunks   DocumentChunk[]
+  measurements ProductMeasurement[]
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@index([tenantId, name])
+}
+
+// ---------- Size intelligence (leak 6): per-product measurement tables (cm) ----------
+
+model ProductMeasurement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  productId String
+  size      String
+  chest     Float?
+  length    Float?
+  shoulder  Float?
+  sleeve    Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, productId, size])
+  @@index([tenantId, productId])
+}
+
+model ProductVariant {
+  id         String @id @default(cuid())
+  tenantId   String
+  productId  String
+  sku        String
+  price      Int?   // overrides product.basePrice when set
+  attributes Json   // e.g. {"Color":"Black","Size":"L"}
+  active     Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory Inventory?
+  images    ProductImage[]
+  orderItems OrderItem[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId, productId])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  tenantId  String
+  productId String
+  variantId String?
+  url       String
+  alt       String?
+  position  Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+}
+
+// ---------- Inventory ----------
+
+model Inventory {
+  id        String @id @default(cuid())
+  tenantId  String
+  variantId String @unique
+  quantity  Int    @default(0)
+  lowThreshold Int @default(3)
+  updatedAt DateTime @updatedAt
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  variantId String
+  type      String   // SALE|RESTOCK|ADJUSTMENT|RETURN|CORRECTION
+  delta     Int
+  before    Int
+  after     Int
+  reason    String?
+  actor     String?  // user id or "system"/"ai"
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, variantId])
+  @@index([tenantId, createdAt])
+}
+
+// ---------- Customers ----------
+
+model Customer {
+  id             String   @id @default(cuid())
+  tenantId       String
+  phone          String
+  name           String?
+  email          String?
+  preferredLanguage String?
+  tags           String[] @default([])
+  notes          String?
+  marketingConsent Boolean @default(true) // opt-out: cart reminders are transactional unless revoked
+  // Confirmed clothing size ("M"). Set ONLY on explicit opt-in or 2+
+  // consistent confirmed orders; cleared by erasure. Advisory use only.
+  preferredSize String?
+  totalOrders    Int      @default(0)
+  totalSpent     Int      @default(0)
+  firstSeenAt    DateTime @default(now())
+  lastSeenAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addresses CustomerAddress[]
+  orders Order[]
+  conversations Conversation[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+}
+
+model CustomerAddress {
+  id        String  @id @default(cuid())
+  tenantId  String
+  customerId String
+  label     String?
+  address   String
+  city      String?
+  zoneId    String?
+  isDefault Boolean @default(false)
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+// ---------- Delivery ----------
+
+model DeliveryZone {
+  id        String @id @default(cuid())
+  tenantId  String
+  name      String
+  nameAr    String?
+  fee       Int
+  eta       String?
+  active    Boolean @default(true)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+// ---------- Promotions (leak 5: backend-owned discounts/bundles) ----------
+
+model Promotion {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  kind         String    // PERCENT|FIXED|BXGY|FREE_SHIPPING
+  value        Int       @default(0) // percent (capped 90) | fixed EGP
+  minSubtotal  Int?
+  productIds   String[]  @default([]) // empty = whole cart
+  buyQty       Int?
+  getQty       Int?
+  startAt      DateTime?
+  endAt        DateTime?
+  active       Boolean   @default(true)
+  usageLimit   Int?
+  usedCount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
+}
+
+// ---------- Conversations / messaging ----------
+
+model Conversation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  customerId      String?
+  channel         String   // WHATSAPP|WEBSITE|...
+  externalId      String?  // channel-specific thread id
+  status          String   @default("AI_ACTIVE")
+  orderState      String   @default("DISCOVERY")
+  assignedTo      String?
+  tags            String[] @default([])
+  draftOrderId    String?
+  lastMessageAt   DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  messages Message[]
+  orders   Order[]
+
+  @@index([tenantId, lastMessageAt])
+  @@index([tenantId, status])
+  @@index([customerId]) // customer conversation history
+  @@unique([tenantId, channel, externalId])
+}
+
+model Message {
+  id               String   @id @default(cuid())
+  tenantId         String
+  conversationId   String
+  role             String   // customer|assistant|system|human_agent
+  content          String
+  providerMessageId String?
+  channelMessageId String?
+  model            String?
+  latencyMs        Int?
+  inputTokens      Int?
+  outputTokens     Int?
+  toolCalls        Json?
+  toolOutputs      Json?
+  error            String?
+  createdAt        DateTime @default(now())
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, providerMessageId])
+  @@index([conversationId, createdAt])
+}
+
+// ---------- Orders ----------
+
+model Order {
+  id              String   @id @default(cuid())
+  tenantId        String
+  number          Int
+  customerId      String?
+  conversationId  String?
+  status          String   @default("DRAFT")
+  subtotal        Int      @default(0)
+  discount        Int      @default(0)
+  deliveryFee     Int      @default(0)
+  tax             Int      @default(0)
+  total           Int      @default(0)
+  currency        String   @default("EGP")
+  paymentMethod   String   @default("CASH_ON_DELIVERY")
+  paymentStatus   String   @default("PENDING")
+  deliveryStatus  String   @default("PENDING")
+  customerName    String?
+  customerPhone   String?
+  address         String?
+  deliveryZoneId  String?
+  notes           String?
+  sourceChannel   String?
+  idempotencyKey  String?
+  // Snapshot of engine-applied promotions (id, name, kind, amount).
+  // Historical record: later promo edits never rewrite old orders.
+  appliedPromos  Json?
+  // Courier tracking (leak 3)
+  trackingNumber String?
+  trackingUrl    String?
+  courier        String?
+  courierPayload Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  history      OrderStatusHistory[]
+
+  @@unique([tenantId, number])
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId]) // customer order history
+}
+
+model OrderItem {
+  id           String @id @default(cuid())
+  tenantId     String
+  orderId      String
+  productId    String
+  variantId    String
+  productName  String // snapshot
+  variantLabel String // snapshot e.g. "Black / L"
+  sku          String? // snapshot
+  unitPrice    Int    // snapshot
+  quantity     Int
+  lineTotal    Int
+
+  order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([tenantId])
+}
+
+model OrderStatusHistory {
+  id        String   @id @default(cuid())
+  tenantId  String
+  orderId   String
+  oldStatus String?
+  newStatus String
+  actor     String   // system|customer|user:<id>
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+// ---------- Knowledge / RAG ----------
+
+model Document {
+  id        String   @id @default(cuid())
+  tenantId  String
+  title     String
+  type      String   @default("TEXT")
+  language  String   @default("ar")
+  source    String?
+  status    String   @default("UPLOADED")
+  error     String?
+  chunkCount Int     @default(0)
+  // Knowledge versioning: edits bump version + replace chunks atomically,
+  // so retrieval never serves a mix of old and new content.
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  chunks DocumentChunk[]
+
+  @@index([tenantId, status])
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  tenantId   String
+  documentId String
+  productId  String?
+  chunkIndex Int
+  content    String
+  tokenCount Int?
+  // Embedding stored as JSON number array (dim = EMBEDDING_DIM).
+  // pgvector migration path documented in docs/RAG.md.
+  embedding  Json?
+  embeddingModel String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, documentId])
+  @@index([tenantId])
+}
+
+// ---------- AI observability ----------
+
+model AiRun {
+  id          String   @id @default(cuid())
+  tenantId    String
+  conversationId String?
+  messageId   String?
+  provider    String
+  model       String
+  promptVersion String?
+  latencyMs   Int?
+  inputTokens Int?
+  outputTokens Int?
+  costEstimate Float?
+  toolsUsed   String[] @default([])
+  result      String?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([conversationId])
+}
+
+model ToolCall {
+  id             String   @id @default(cuid())
+  tenantId       String
+  aiRunId        String?
+  conversationId String?
+  name           String
+  arguments      Json?
+  result         Json?
+  success        Boolean  @default(true)
+  error          String?
+  latencyMs      Int?
+  createdAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, name])
+}
+
+model PromptVersion {
+  id        String   @id @default(cuid())
+  tenantId  String?  // null = platform default
+  name      String
+  version   Int      @default(1)
+  content   Json
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name, version])
+}
+
+// ---------- Integrations / ops ----------
+
+model Integration {
+  id        String   @id @default(cuid())
+  tenantId  String
+  type      String   // WHATSAPP|N8N|SLACK|...
+  status    String   @default("DISABLED")
+  config    Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+}
+
+model WebhookEvent {
+  id                String   @id @default(cuid())
+  tenantId          String
+  provider          String
+  providerMessageId String
+  eventType         String   @default("message")
+  payload           Json?
+  status            String   @default("RECEIVED") // RECEIVED|PROCESSED|DUPLICATE|FAILED
+  error             String?
+  createdAt         DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, providerMessageId])
+  @@index([tenantId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  kind      String   // NEW_ORDER|LOW_STOCK|HUMAN_REQUESTED|...
+  channel   String   @default("CONSOLE")
+  target    String?
+  payload   Json?
+  status    String   @default("QUEUED")
+  error     String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  actor      String
+  action     String
+  resource   String?
+  resourceId String?
+  oldValue   Json?
+  newValue   Json?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, action])
+}
+
+// ---------- Billing preparation (plans/subscriptions/usage, enforced server-side) ----------
+
+model Plan {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  priceEgp     Int?
+  maxAiMessages Int?    // null = unlimited
+  maxProducts  Int?
+  maxSeats     Int?
+  maxDocuments Int?
+  maxChannels  Int?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                      String    @id @default(cuid())
+  tenantId                String    @unique
+  planId                  String
+  status                  String    @default("ACTIVE") // ACTIVE|PAST_DUE|SUSPENDED|CANCELLED
+  provider                String    @default("MANUAL") // MANUAL|Fawry
+  providerRef             String?   @unique
+  providerCustomerToken   String?
+  trialEndsAt             DateTime?
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  lastProviderEvent       DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+}
+
+model UsageCounter {
+  id       String @id @default(cuid())
+  tenantId String
+  metric   String // message|ai_run|tool_call|document
+  period   String // YYYY-MM (UTC)
+  count    Int    @default(0)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, metric, period])
+  @@index([tenantId, period])
+}
+
+// ---------- Phone verification (leak 7: COD fake-order protection) ----------
+
+model PhoneVerification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  phone     String
+  orderId   String?
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  verifiedAt DateTime?
+  lastSentAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, phone])
+  @@index([tenantId, orderId])
+}

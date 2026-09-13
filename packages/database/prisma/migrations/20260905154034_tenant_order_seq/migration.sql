@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Tenant" ADD COLUMN     "orderSeq" INTEGER NOT NULL DEFAULT 1000;

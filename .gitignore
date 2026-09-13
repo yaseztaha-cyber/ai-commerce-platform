@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+prisma/*.db
+prisma/*.db-journal
+# local product-image uploads (use object storage in production)
+apps/web/storage/

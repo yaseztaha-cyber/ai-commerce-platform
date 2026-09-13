@@ -1,0 +1,18 @@
+# Example TLS reverse proxy for production (copy to /etc/caddy/Caddyfile,
+# replace the domain, `systemctl reload caddy`). Caddy provisions and renews
+# the Let's Encrypt certificate automatically — nothing to do in the app.
+# Assumes the compose stack runs on the same host (WEB_PORT=3000).
+# See docs/DEPLOYMENT.md ("Domain / HTTPS").
+
+shop.example.com {
+	reverse_proxy 127.0.0.1:3000
+
+	# The app already sends nosniff / DENY / Referrer-Policy / Permissions-Policy
+	# / COOP / CORP and a per-request nonce CSP. HSTS lives here on purpose:
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+	# Don't log the cron secret header value in access logs.
+	log {
+		format json
+	}
+}

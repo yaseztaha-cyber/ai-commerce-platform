@@ -1,0 +1,113 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: ai-commerce-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aicommerce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aicommerce_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-aicommerce}
+    ports:
+      # Localhost-bound: dev/tests reach the DB, but a prod VPS never
+      # exposes Postgres to the internet (app containers use the `postgres`
+      # hostname over the compose network instead).
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aicommerce}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-commerce-redis
+    restart: unless-stopped
+    ports:
+      # Localhost-bound (see postgres above).
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: apply idempotent migrations before web/worker start.
+  migrate:
+    build: .
+    image: ai-commerce:latest
+    command: ["npm", "run", "db:deploy", "--workspace=packages/database"]
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-aicommerce}:${POSTGRES_PASSWORD:-aicommerce_dev}@postgres:5432/${POSTGRES_DB:-aicommerce}"
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build: .
+    image: ai-commerce:latest
+    container_name: ai-commerce-web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-aicommerce}:${POSTGRES_PASSWORD:-aicommerce_dev}@postgres:5432/${POSTGRES_DB:-aicommerce}"
+      REDIS_URL: "redis://redis:6379"
+      # Dedicated worker drains the queue; the web process stays HTTP-only.
+      WORKER_ONLY: "1"
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?set NEXT_PUBLIC_APP_URL in .env}
+      # Persistent uploads: without this volume, local product images
+      # (STORAGE_PROVIDER=local) vanish on every container recreate.
+      STORAGE_DIR: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  worker:
+    build: .
+    image: ai-commerce:latest
+    container_name: ai-commerce-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-aicommerce}:${POSTGRES_PASSWORD:-aicommerce_dev}@postgres:5432/${POSTGRES_DB:-aicommerce}"
+      REDIS_URL: "redis://redis:6379"
+      WORKER_ONLY: "1"
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?set NEXT_PUBLIC_APP_URL in .env}
+    command: ["npm", "run", "worker", "--workspace=apps/web"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
