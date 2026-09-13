@@ -127,7 +127,7 @@ export function Err({ message, retry }: { message: string; retry?: () => void })
       <span className="font-semibold">Something went wrong. </span>
       {message}
       {retry && (
-        <button onClick={retry} className="ml-2 font-semibold underline hover:no-underline">
+        <button onClick={retry} className="ms-2 font-semibold underline hover:no-underline">
           Retry
         </button>
       )}
@@ -206,11 +206,12 @@ export function FormField({ label, htmlFor, error, hint, tooltip, required, chil
     <div className={`relative ${className || ""}`}>
       <label className="label" htmlFor={htmlFor}>
         {label}
-        {required && <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>}
+        {required && <span className="text-red-500 ms-0.5" aria-hidden="true">*</span>}
         {tooltip && tooltipId && (
           <button
             type="button"
-            className="ml-1 text-ink-300 hover:text-ink-500"
+            className="ms-1 text-ink-300 hover:text-ink-500"
+            aria-label="More info"
             aria-describedby={tooltipId}
             onMouseEnter={() => showTooltip(tooltipId, tooltip)}
             onMouseLeave={() => hideTooltip(tooltipId)}

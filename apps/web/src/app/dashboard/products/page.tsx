@@ -168,7 +168,9 @@ export default function Products() {
         <button className="btn-primary">Add product</button>
         {msg && <span className="text-sm text-red-700">{msg}</span>}
       </form>
-      {data.products.length === 0 && <Empty title="No products" hint="Add your first product above." />}
+      {data.products.length === 0 ? (
+        <Empty title="No products" hint="Add your first product above." />
+      ) : (
       <div className="card overflow-x-auto">
         <table className="table">
           <thead><tr><th>Product</th><th>Price</th><th>Variants (SKU · attributes · stock)</th><th>Status</th><th></th></tr></thead>
@@ -177,13 +179,13 @@ export default function Products() {
               <Fragment key={p.id}>
                 <tr>
                   <td>
-                    <div className="font-semibold">{p.name}</div>
-                    <div className="text-xs text-ink-500">{p.nameAr}</div>
+                    <div className="font-semibold" dir="auto">{p.name}</div>
+                    <div className="text-xs text-ink-500" dir="auto">{p.nameAr}</div>
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       {(p.images ?? []).map((img) => (
                         <span key={img.id} className="group relative inline-block">
                           <img src={img.url} alt={img.alt ?? p.name} className="h-10 w-10 rounded border border-ink-100 object-cover" loading="lazy" />
-                          <button title="Delete image" className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-red-700 text-[10px] text-white group-hover:flex" onClick={() => deleteImage(img.id)}>×</button>
+                          <button title="Delete image" aria-label={`Delete image of ${p.name}`} className="absolute -end-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-700 text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100" onClick={() => deleteImage(img.id)}>×</button>
                         </span>
                       ))}
                       <label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded border border-dashed border-ink-300 text-lg text-ink-300 hover:border-brand-600 hover:text-brand-600" title="Upload image (jpeg/png/webp, ≤5MB)">
@@ -223,9 +225,9 @@ export default function Products() {
                   </td>
                   <td>{p.active ? <span className="badge-green">Active</span> : <span className="badge-gray">Off</span>}</td>
                   <td className="whitespace-nowrap">
-                    <button className="btn-ghost mr-1 px-2 py-1 text-xs" onClick={() => { setOpenVariant(openVariant === p.id ? null : p.id); setVmsg(""); }}>+ Variant</button>
-                    <button className="btn-ghost mr-1 px-2 py-1 text-xs" onClick={() => { setOpenMeasures(openMeasures === p.id ? null : p.id); }}>Sizes</button>
-                    <button className="btn-ghost mr-1 px-2 py-1 text-xs" onClick={() => startProductEdit(p)}>Edit</button>
+                    <button className="btn-ghost me-1 px-2 py-1 text-xs" onClick={() => { setOpenVariant(openVariant === p.id ? null : p.id); setVmsg(""); }}>+ Variant</button>
+                    <button className="btn-ghost me-1 px-2 py-1 text-xs" onClick={() => { setOpenMeasures(openMeasures === p.id ? null : p.id); }}>Sizes</button>
+                    <button className="btn-ghost me-1 px-2 py-1 text-xs" onClick={() => startProductEdit(p)}>Edit</button>
                     <button className="btn-ghost px-2 py-1 text-xs" onClick={() => archiveProduct(p)}>{p.active ? "Archive" : "Re-enable"}</button>
                   </td>
                 </tr>
@@ -272,6 +274,7 @@ export default function Products() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

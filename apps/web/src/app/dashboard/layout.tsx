@@ -30,7 +30,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-sm font-bold text-white">Y</div>
                 <span className="truncate font-bold tracking-tight">
                   {tenant.name}
-                  <span className="ml-2 hidden text-xs font-medium text-ink-300 sm:inline">YASEZ Commerce</span>
+                  <span className="ms-2 hidden text-xs font-medium text-ink-300 sm:inline">YASEZ Commerce</span>
                 </span>
               </Link>
             </div>
@@ -46,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             </div>
           </div>
         </header>
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 md:grid-cols-[210px_1fr]">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[210px_1fr]">
           <DashboardNav />
           <main className="min-w-0">{children}</main>
         </div>

@@ -23,7 +23,7 @@ export default function PrivacyPage() {
       </p>
 
       <h2 className={H}>Data we store</h2>
-      <ul className="list-disc pl-6">
+      <ul className="list-disc ps-6">
         <li className={LI}><strong>Account:</strong> name, email, phone, role; passwords exist only as bcrypt hashes.</li>
         <li className={LI}><strong>Store content you enter:</strong> products, variants, inventory, customers, orders, promotions, knowledge documents, and team inbox conversations.</li>
         <li className={LI}><strong>Shopper messages</strong> on connected channels (WhatsApp, Instagram, Messenger), including voice-note transcripts and photo readings used to answer — body measurements stay in the chat transcript only and never enter profiles or analytics.</li>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
       </ul>
 
       <h2 className={H}>Services that touch data (server-side only)</h2>
-      <ul className="list-disc pl-6">
+      <ul className="list-disc ps-6">
         <li className={LI}>Hosting database (Postgres) and queue (Redis) run by the deployment operator.</li>
         <li className={LI}>Meta WhatsApp/Instagram/Messenger Cloud APIs — message delivery.</li>
         <li className={LI}>Fawry — subscription payments. Bosta — shipping labels you request.</li>
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
       <p className={P}>We run no advertising trackers. The only cookie is the essential HttpOnly session cookie.</p>
 
       <h2 className={H}>Erasure and retention</h2>
-      <ul className="list-disc pl-6">
+      <ul className="list-disc ps-6">
         <li className={LI}><strong>Customers:</strong> dashboard delete anonymizes PII (name → “Deleted customer”, contacts cleared) while preserving order price snapshots for accounting.</li>
         <li className={LI}><strong>Conversations and knowledge documents:</strong> deletable with their messages, tool calls, and embeddings.</li>
         <li className={LI}><strong>Full workspace deletion</strong> is an operator procedure (contact support); product images in object storage are removed by prefix.</li>

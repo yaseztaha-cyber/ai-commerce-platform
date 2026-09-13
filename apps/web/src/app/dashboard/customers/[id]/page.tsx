@@ -68,7 +68,7 @@ export default function CustomerPage({ params }: { params: { id: string } }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-extrabold tracking-tight">{c.name ?? c.phone}</h1>
+        <h1 className="text-xl font-extrabold tracking-tight" dir="auto">{c.name ?? c.phone}</h1>
         <div className="flex gap-2">
           <button className="btn-ghost text-xs" onClick={() => (editing ? setEditing(false) : startEdit())}>{editing ? "Cancel" : "Edit"}</button>
           <button className="btn-ghost text-xs text-red-700" onClick={erase}>Erase data</button>

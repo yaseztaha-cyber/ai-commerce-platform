@@ -114,7 +114,7 @@ export default function BillingPage() {
       {isSuspended && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-800 text-sm">
           Your subscription is <strong>{subscription.status}</strong>. Please update your payment method to continue using all features.
-          <button onClick={() => { setRenewBusy(true); setCheckoutError(""); }} disabled={renewBusy} className="ml-3 underline font-medium hover:text-amber-900 disabled:no-underline">
+          <button onClick={() => { setRenewBusy(true); setCheckoutError(""); }} disabled={renewBusy} className="ms-3 underline font-medium hover:text-amber-900 disabled:no-underline">
             {renewBusy ? "Redirecting…" : "Renew now"}
           </button>
         </div>
@@ -174,7 +174,7 @@ export default function BillingPage() {
             const isFree = p.priceEgp <= 0;
             if (isCurrent) {
               return (
-                <div key={p.slug} className="rounded-lg border p-4 text-left text-sm border-brand-200 bg-brand-50 text-brand-700">
+                <div key={p.slug} className="rounded-lg border p-4 text-start text-sm border-brand-200 bg-brand-50 text-brand-700">
                   <p className="font-semibold">{p.name}</p>
                   <p className="mt-1">{p.priceEgp > 0 ? `${p.priceEgp} EGP/mo` : "Free"}</p>
                   <p className="mt-2 text-xs font-medium">Current plan</p>
@@ -184,7 +184,7 @@ export default function BillingPage() {
             if (isFree && downgradeAsk === p.slug) {
               const over = overages(usage, p);
               return (
-                <div key={p.slug} className="rounded-lg border p-4 text-left text-sm border-amber-300 bg-amber-50/50">
+                <div key={p.slug} className="rounded-lg border p-4 text-start text-sm border-amber-300 bg-amber-50/50">
                   <p className="font-semibold">Downgrade to {p.name}?</p>
                   {over.length > 0 ? (
                     <p className="mt-1 text-xs text-amber-700">Over limits: {over.join(", ")}. Existing items keep working; new usage is gated.</p>
@@ -215,7 +215,7 @@ export default function BillingPage() {
                   }
                 }}
                 disabled={busy}
-                className="rounded-lg border p-4 text-left text-sm transition-colors border-ink-200 hover:border-brand-300 hover:bg-brand-50/50 disabled:opacity-50"
+                className="rounded-lg border p-4 text-start text-sm transition-colors border-ink-200 hover:border-brand-300 hover:bg-brand-50/50 disabled:opacity-50"
               >
                 <p className="font-semibold">{p.name}</p>
                 <p className="mt-1 text-ink-500">{p.priceEgp > 0 ? `${p.priceEgp} EGP/mo` : "Free"}</p>

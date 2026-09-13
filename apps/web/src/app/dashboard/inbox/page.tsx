@@ -171,17 +171,17 @@ export default function Inbox() {
         <h1 className="text-xl font-extrabold tracking-tight">Inbox</h1>
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <svg aria-hidden="true" className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input
               ref={searchInputRef}
-              className="input w-64 pl-10"
+              className="input w-full ps-10 sm:w-64"
               placeholder="Search conversations…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search conversations"
             />
           </div>
-          <select className="input w-48" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter conversations">
+          <select className="input w-full sm:w-48" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter conversations">
             <option value="">All</option>
             <option value="AI_ACTIVE">AI active</option>
             <option value="HUMAN_REQUIRED">Needs human</option>
@@ -201,12 +201,12 @@ export default function Inbox() {
               key={c.id}
               onClick={() => open(c.id)}
               role="listitem"
-              className={`block w-full px-4 py-3 text-left hover:bg-ink-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-600 ${active?.id === c.id ? "bg-brand-50" : ""}`}
+              className={`block w-full px-4 py-3 text-start hover:bg-ink-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-600 ${active?.id === c.id ? "bg-brand-50" : ""}`}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
                   <span className={`h-2 w-2 shrink-0 rounded-full ${CHANNEL_DOT[c.channel] ?? "bg-ink-300"}`} title={CHANNEL_LABEL[c.channel] ?? c.channel} />
-                  <span className="truncate">{c.customer?.name ?? c.customer?.phone ?? "Unknown"}</span>
+                  <span dir="auto" className="truncate">{c.customer?.name ?? c.customer?.phone ?? "Unknown"}</span>
                 </span>
                 <StatusBadge status={c.status} />
               </div>
@@ -220,9 +220,9 @@ export default function Inbox() {
           {active && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ink-100 px-4 py-2 text-sm">
-                <span className="font-semibold">
+                <span className="font-semibold" dir="auto">
                   {active.customer?.name ?? active.customer?.phone ?? "Unknown"}
-                  <span className="ml-2 font-normal text-ink-500">
+                  <span className="ms-2 font-normal text-ink-500">
                     {CHANNEL_LABEL[active.channel] ?? active.channel} · {STATE_LABEL[active.orderState] ?? active.orderState}
                   </span>
                 </span>

@@ -90,7 +90,7 @@ export default function Overview() {
                 {data.recentOrders.map((o) => (
                   <tr key={o.id}>
                     <td className="font-semibold">#{o.number}</td>
-                    <td>{o.customerName ?? o.customerPhone ?? "—"}</td>
+                    <td dir="auto">{o.customerName ?? o.customerPhone ?? "—"}</td>
                     <td><StatusBadge status={o.status} /></td>
                     <td className="tabular-nums">{formatEGP(o.total)}</td>
                     <td className="whitespace-nowrap text-xs text-ink-500">{timeAgo(o.createdAt)}</td>

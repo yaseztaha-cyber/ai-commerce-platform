@@ -128,8 +128,8 @@ export default function OrderDetail({ params }: { params: { id: string } }) {
         <div className="space-y-4">
           <div className="card p-5 text-sm">
             <h2 className="text-sm font-bold uppercase tracking-wide text-ink-500">Customer</h2>
-            <div className="mt-2">{o.customerName ?? "—"} · {o.customerPhone ?? "—"}</div>
-            <div className="text-ink-500">{o.address ?? "No address"}</div>
+            <div className="mt-2" dir="auto">{o.customerName ?? "—"} · <span dir="ltr">{o.customerPhone ?? "—"}</span></div>
+            <div className="text-ink-500" dir="auto">{o.address ?? "No address"}</div>
             <div className="mt-1">Payment: {o.paymentMethod}</div>
             {o.trackingNumber && (
               <div className="mt-2 text-sm">
@@ -137,10 +137,10 @@ export default function OrderDetail({ params }: { params: { id: string } }) {
                 {o.trackingUrl
                   ? <a href={o.trackingUrl} target="_blank" rel="noopener noreferrer" className="underline text-brand-600">{o.trackingNumber}</a>
                   : <span>{o.trackingNumber}</span>}
-                {o.courier && <span className="text-ink-500 ml-2">({o.courier})</span>}
+                {o.courier && <span className="text-ink-500 ms-2">({o.courier})</span>}
               </div>
             )}
-            {o.notes && <div className="mt-1 text-ink-500">Notes: {o.notes}</div>}
+            {o.notes && <div className="mt-1 text-ink-500" dir="auto">Notes: {o.notes}</div>}
           </div>
           {editing && eform && (
             <div className="card border-brand-100 bg-brand-50/50 p-5 text-sm">

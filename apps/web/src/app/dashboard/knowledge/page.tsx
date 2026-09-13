@@ -65,7 +65,7 @@ export default function Knowledge() {
                   <td>{d.chunkCount}</td>
                   <td className="text-xs text-ink-500">{new Date(d.updatedAt).toLocaleString()}</td>
                   <td className="whitespace-nowrap">
-                    <button className="mr-2 text-xs text-brand-700 hover:underline" onClick={() => reindex(d.id, d.title)}>Edit & re-index</button>
+                    <button className="me-2 text-xs text-brand-700 hover:underline" onClick={() => reindex(d.id, d.title)}>Edit & re-index</button>
                     <button className="text-xs text-red-700 hover:underline" onClick={() => remove(d.id)}>Delete</button>
                   </td>
                 </tr>

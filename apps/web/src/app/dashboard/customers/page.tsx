@@ -16,8 +16,8 @@ export default function Customers() {
           <tbody>
             {data.customers.map((c) => (
               <tr key={c.id}>
-                <td className="font-semibold">{c.name ?? "—"}</td>
-                <td className="font-mono text-xs">{c.phone}</td>
+                <td className="font-semibold" dir="auto">{c.name ?? "—"}</td>
+                <td className="font-mono text-xs" dir="ltr">{c.phone}</td>
                 <td>{c.totalOrders}</td>
                 <td className="tabular-nums">{formatEGP(c.totalSpent)}</td>
                 <td className="whitespace-nowrap text-xs text-ink-500">{timeAgo(c.lastSeenAt)}</td>

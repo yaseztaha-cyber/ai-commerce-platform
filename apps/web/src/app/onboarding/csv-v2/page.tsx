@@ -152,7 +152,7 @@ export default function CSVv2Import() {
           {preview.errors.length > 0 && (
             <div className="mt-3 text-sm text-red-600">
               Errors: {preview.errors.length} (showing first 20)
-              <ul className="list-disc pl-5 mt-1">
+              <ul className="list-disc ps-5 mt-1">
                 {preview.errors.slice(0, 20).map((e, i) => (
                   <li key={i}>Row {e.row}{e.field ? ` (${e.field})` : ""}: {e.message}</li>
                 ))}
